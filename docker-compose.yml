@@ -1,43 +1,65 @@
 version: "3"
 
 services:
-  mongo1:
-    hostname: mongo1
+  
+  # Mongo Router server
+  mongos:
+    hostname: mongos
     image: mongo:latest
-    expose:
-      - 27017
     ports:
-      - 30000:27017
-    restart: always
-    volumes:
-      - /data1:/data/db
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+      - 27017:27017
+    command: bash -c "mongos --configdb configserver/cfgsvr1:27017,cfgsvr2:27018"
+    depends_on: 
+      - shrdsvr1_1
+      - shrdsvr1_2
+      - shrdsvr1_3
 
-  mongo2:
-    hostname: mongo2
+  # Mongodb Config Server
+  cfgsvr1:
+    hostname: cfgcvr1
     image: mongo:latest
     expose:
       - 27017
-    ports:
-      - 30001:27017
-    volumes:
-      - /data2:/data/db
-    restart: always
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    command: ["mongod", "--configsvr", "--replSet"]
+  
+  dfrsvr2:
+    hostname: cfgcvr2
+    image: mongo:latest
+    expose:
+      - 27018
+    command: ["mongod", "--configsvr", "--replSet"]
+    
 
-  mongo3:
-    hostname: mongo3
+    
+  
+  # Mongodb Shard Server
+  shrdsvr1_1:
     image: mongo:latest
-    expose:
-      - 27017
     ports:
-      - 30002:27017
+      - 27017
     volumes:
-      - /data3:/data/db
-    restart: always
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+      - /shrdsvr1_data1:/data/db
+    command: bash -c "mongod --shardsvr --port 27017 --replSet shrd1"
+  
+  shrdsvr1_2:
+    image: mongo:latest
+    ports:
+      - 27018
+    volumes:
+      - /shrdsvr1_data2:/data/db
+    command: bash -c "mongod --shardsvr --port 27018 --replSet shrd1"
+  
+  shrdsvr1_3:
+    image: mongo:latest
+    ports:
+      - 27019
+    volumes:
+      - /shrdsvr1_data3:/data/db
+    command: bash -c "mongod --shardsvr --port 27019 --replSet shrd1"
+
 
 volumes:
-    data1:
-    data2:
-    data3:
+  shrdsvr1_data1:
+  shrdsvr1_data2:
+  shrdsvr1_data3:
+    
