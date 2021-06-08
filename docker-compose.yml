@@ -8,29 +8,37 @@ services:
     image: mongo:latest
     ports:
       - 27017:27017
-    command: bash -c "mongos --configdb configserver/cfgsvr1:27017,cfgsvr2:27018"
+    command: mongos --port 27017 --configdb configserver/cfgsvr1:27017,cfgsvr2:27017 --bind_ip_all
+    volumes:
+      - ./scripts:/scripts
     depends_on: 
+      - cfgsvr1
+      - cfgsvr2
       - shrdsvr1_1
       - shrdsvr1_2
       - shrdsvr1_3
 
   # Mongodb Config Server
   cfgsvr1:
-    hostname: cfgcvr1
+    container_name: cfgsvr1
     image: mongo:latest
     expose:
       - 27017
-    command: ["mongod", "--configsvr", "--replSet"]
-  
-  dfrsvr2:
-    hostname: cfgcvr2
+    command: mongod --port 27017 --configsvr --replSet configserver
+    environment: 
+      - MONGODB_REPLICA_SET_MODE=primary
+
+  cfgsvr2:
+    container_name: cfgsvr2
     image: mongo:latest
     expose:
-      - 27018
-    command: ["mongod", "--configsvr", "--replSet"]
-    
-
-    
+      - 27017
+    command: mongod --port 27017 --configsvr --replSet configserver
+    environment: 
+      - MONGODB_REPLICA_SET_MODE=secondary
+      - MONGODB_PRIMARY_HOST=cfgsvr1
+    links:
+      - cfgsvr1
   
   # Mongodb Shard Server
   shrdsvr1_1:
@@ -39,7 +47,7 @@ services:
       - 27017
     volumes:
       - /shrdsvr1_data1:/data/db
-    command: bash -c "mongod --shardsvr --port 27017 --replSet shrd1"
+    command: mongod --shardsvr --port 27017 --replSet shrd1
   
   shrdsvr1_2:
     image: mongo:latest
@@ -47,7 +55,7 @@ services:
       - 27018
     volumes:
       - /shrdsvr1_data2:/data/db
-    command: bash -c "mongod --shardsvr --port 27018 --replSet shrd1"
+    command: mongod --shardsvr --port 27018 --replSet shrd1
   
   shrdsvr1_3:
     image: mongo:latest
@@ -55,7 +63,7 @@ services:
       - 27019
     volumes:
       - /shrdsvr1_data3:/data/db
-    command: bash -c "mongod --shardsvr --port 27019 --replSet shrd1"
+    command: mongod --shardsvr --port 27019 --replSet shrd1
 
 
 volumes:
